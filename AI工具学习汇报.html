@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 工具学习汇报</title>
+<style>
+  /* ── 基础重置 ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0d0d;
+    --surface:   #141414;
+    --surface2:  #1a1a1a;
+    --border:    #2a2a2a;
+    --border2:   #333;
+    --accent:    #e8e8e8;
+    --muted:     #888;
+    --muted2:    #555;
+    --text:      #d4d4d4;
+    --text-dim:  #9a9a9a;
+    --white:     #ffffff;
+    --tag-bg:    #1f1f1f;
+    --glow:      rgba(220,220,220,0.06);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.8;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── 滚动条 ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  /* ── 顶部噪点纹理 ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* ── HEADER ── */
+  .site-header {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    background: rgba(13,13,13,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+  }
+  .header-brand .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  .header-meta {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
+
+  /* ── LAYOUT ── */
+  .page-wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 100px 40px 80px;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 60px 0 80px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 80px;
+  }
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    display: block;
+    width: 20px; height: 1px;
+    background: var(--muted2);
+  }
+  .hero h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--white);
+    line-height: 1.25;
+    margin-bottom: 28px;
+  }
+  .hero-lead {
+    font-size: 15px;
+    color: var(--text-dim);
+    max-width: 640px;
+    line-height: 1.9;
+  }
+  .hero-lead em {
+    font-style: normal;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 72px;
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 0.55s ease, transform 0.55s ease;
+  }
+  .section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-num {
+    width: 28px; height: 28px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0;
+    flex-shrink: 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--white);
+    letter-spacing: -0.01em;
+  }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 28px;
+    margin-bottom: 16px;
+    transition: border-color 0.25s, background 0.25s;
+  }
+  .card:hover {
+    border-color: var(--border2);
+    background: var(--surface2);
+  }
+  .card-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 12px;
+    letter-spacing: 0.01em;
+  }
+  .card-icon {
+    width: 16px; height: 16px;
+    flex-shrink: 0;
+    opacity: 0.7;
+  }
+  .card p, .card .desc {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.85;
+  }
+
+  /* ── 引言块 ── */
+  .insight-box {
+    background: var(--surface);
+    border-left: 2px solid var(--accent);
+    padding: 20px 24px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 32px;
+  }
+  .insight-box p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.9;
+  }
+  .insight-box em {
+    font-style: normal;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ── MODEL 对比卡片 ── */
+  .model-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .model-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .model-card:hover {
+    border-color: var(--border2);
+    background: var(--surface2);
+  }
+  .model-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .model-tag {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--tag-bg);
+    color: var(--muted);
+    border: 1px solid var(--border2);
+    text-transform: uppercase;
+  }
+  .model-desc {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.7;
+  }
+
+  /* ── 经验列表 ── */
+  .lesson-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .lesson-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+  .lesson-list li::before {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--muted2);
+    flex-shrink: 0;
+    margin-top: 9px;
+  }
+
+  /* ── 规划卡片 ── */
+  .plan-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 4px;
+  }
+  @media (max-width: 580px) {
+    .plan-grid { grid-template-columns: 1fr; }
+    .page-wrap { padding: 90px 20px 60px; }
+    .site-header { padding: 0 20px; }
+  }
+  .plan-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 22px 18px;
+    transition: border-color 0.25s, background 0.25s;
+  }
+  .plan-card:hover {
+    border-color: var(--border2);
+    background: var(--surface2);
+  }
+  .plan-phase {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted2);
+    margin-bottom: 8px;
+  }
+  .plan-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .plan-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .plan-items li {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.75;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .plan-items li::before {
+    content: '—';
+    color: var(--muted2);
+    flex-shrink: 0;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  /* ── WORKBUDDY 专区 ── */
+  .wb-feature-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .wb-feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.8;
+  }
+  .wb-feature-list li::before {
+    content: '›';
+    color: var(--accent);
+    font-weight: 700;
+    flex-shrink: 0;
+    font-size: 15px;
+    margin-top: -1px;
+  }
+
+  /* ── 进度标签 ── */
+  .progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 3px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    background: var(--tag-bg);
+    color: var(--muted);
+  }
+  .badge.active {
+    border-color: #444;
+    color: #bbb;
+    background: #1e1e1e;
+  }
+
+  /* ── FOOTER ── */
+  .page-footer {
+    margin-top: 80px;
+    padding-top: 32px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted2);
+    letter-spacing: 0.03em;
+  }
+
+  /* ── 装饰线 ── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 32px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<header class="site-header">
+  <div class="header-brand">
+    <span class="dot"></span>
+    <span>AI 工具学习汇报</span>
+  </div>
+  <div class="header-meta">2026 · 景观设计部</div>
+</header>
+
+<!-- 主体内容 -->
+<div class="page-wrap">
+
+  <!-- HERO -->
+  <section class="hero section visible">
+    <div class="hero-eyebrow">Internal Report</div>
+    <h1>关于近两周 AI 工具学习<br>与景观业务结合的初步汇报</h1>
+    <p class="hero-lead">
+      最近两周的业余时间，我初步了解并实操了 OpenClaw、Workbuddy 等 AI Agent 工具。<br>
+      这次尝试给我最大的收获，其实是一种<em>工作思维的转变</em>。以前实习做项目，总觉得找意向图、整理案例等"体力活"就该自己熬夜干。但接触 Agent 后我发现，完全可以把 AI 当成我的<em>"虚拟实习生"</em>。我的主要精力应该放在"如何下达准确指令"以及"判断结果是否可用"上。这种从"纯画图"变成<em>"小包工头"</em>的效率思维，让我觉得非常有必要向您简单汇报一下近期的尝试与设想：
+    </p>
+  </section>
+
+  <!-- 一、工具摸索与踩坑经验 -->
+  <section class="section" id="s1">
+    <div class="section-header">
+      <div class="section-num">01</div>
+      <div class="section-title">工具摸索与踩坑经验</div>
+    </div>
+
+    <!-- 算力分配 -->
+    <div class="card">
+      <div class="card-title">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        算力分配（放弃本地，拥抱云端）
+      </div>
+      <p>一开始我尝试在本地部署 Ollama（跑 Llama 3 等），但极其消耗电脑内存，导致画图时卡顿。因此现阶段建议弃用本地算力，直接调用云端 API 接口，保证工作流顺畅。</p>
+    </div>
+
+    <!-- 各家模型实测 -->
+    <div class="card">
+      <div class="card-title">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        各家模型实测与组合使用
+      </div>
+      <p style="margin-bottom:16px;">这段时间对比测试了几款主流大模型，整体思路是"对症下药"，根据不同需求组合使用。</p>
+      <div class="model-grid">
+        <div class="model-card">
+          <div class="model-name">
+            国产三件套
+            <span class="model-tag">高性价比</span>
+          </div>
+          <div class="model-desc">MiniMax 2.7、Qwen 3.6 Plus、DeepSeek 3.2——处理基础任务划算，能有效控制成本。</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">
+            Claude
+            <span class="model-tag">逻辑首选</span>
+          </div>
+          <div class="model-desc">写代码和梳理复杂逻辑上更聪明，但对 VPN 节点限制较严，开通会员有一定门槛。</div>
+        </div>
+        <div class="model-card">
+          <div class="model-name">
+            Gemini / Nano Banana
+            <span class="model-tag">搜索 + 生图</span>
+          </div>
+          <div class="model-desc">查资料体验顺滑，Nano Banana 模型生图效果不错，可直接用于方案配图。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 认清折腾成本 -->
+    <div class="card">
+      <div class="card-title">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        认清"折腾成本"
+      </div>
+      <p>这半个月遇到过刚配好的环境一更新就报错，也遇到过用爬虫抓图被网站封堵。OpenClaw 学习速度赶不上升级速度，版本迭代迅速，目前刚体验 4.6 版本，出现系统崩溃、UI 界面卡顿等严重现象。这让我明白，搞技术工具的前期维护成本很高。如果未来要在团队推广，必须先剔除这些不稳定因素，拿出一个"傻瓜式"的稳定版本，避免增加大家的负担。</p>
+    </div>
+  </section>
+
+  <!-- 二、自动化流的初步跑通 -->
+  <section class="section" id="s2">
+    <div class="section-header">
+      <div class="section-num">02</div>
+      <div class="section-title">自动化流的初步跑通</div>
+    </div>
+
+    <p style="font-size:14px;color:var(--text-dim);margin-bottom:24px;line-height:1.85;">在明确了模型方向后，我跟着教程初步跑通了一些基础应用：</p>
+
+    <!-- 运行机制 -->
+    <div class="card">
+      <div class="card-title">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+        </svg>
+        了解运行机制与身份设定
+      </div>
+      <p>初步弄懂了 Agent 的运转逻辑，能够通过修改 soul 和 agents.md 配置文件，给 AI 设定特定的"职业身份"来处理问题。</p>
+    </div>
+
+    <!-- 跨平台联动 -->
+    <div class="card">
+      <div class="card-title">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+        </svg>
+        跨平台联动
+      </div>
+      <p>试着安装了微信、飞书和 QQ 的插件，初步看懂了 AI 是如何联动这些聊天软件发送消息的。未来可以用飞书、QQ 等多 Agent 协调工作。</p>
+    </div>
+
+    <!-- Workbuddy -->
+    <div class="card">
+      <div class="card-title">
+        <svg class="card-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        Workbuddy 深度体验
+      </div>
+      <div class="insight-box" style="margin-top:4px;margin-bottom:16px;">
+        <p>这是目前用下来效果最好、运行也最稳定的一个工具。支持本地一键部署，基本是"傻瓜式"操作，<em>不需要翻墙</em>就能直接用，各类技能也是一键就能配置好，非常契合日常办公场景。</p>
+      </div>
+      <ul class="wb-feature-list">
+        <li>功能页面已全面摸熟，能灵活为不同模块接入不同大模型</li>
+        <li>系统自带 Skill 技能库充足，基本覆盖日常需求；特殊需求可在 Cloudhabit 下载社区插件</li>
+        <li>正在尝试跑通<strong style="color:var(--accent);font-weight:500;">小红书抓取 Skill</strong>，用于快速搜集爆款景观案例和大众反馈——目前受平台反爬虫机制限制，持续调试中</li>
+        <li>深入研究 AI 上下文记忆 / 长期记忆整合，以及"自我反思"与"学习提升"机制，目标是建立个人知识库</li>
+      </ul>
+      <div class="progress-row" style="margin-top:16px;">
+        <span class="badge active">进行中：小红书 Skill 调试</span>
+        <span class="badge active">进行中：知识库构建</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 三、结合景观设计业务的落地规划 -->
+  <section class="section" id="s3">
+    <div class="section-header">
+      <div class="section-num">03</div>
+      <div class="section-title">结合景观设计业务的落地规划</div>
+    </div>
+
+    <p style="font-size:14px;color:var(--text-dim);margin-bottom:28px;line-height:1.85;">
+      结合上述摸索，我认为这套工具可以在未来逐步赋能景观设计工作，具体分为"个人辅助"与"团队共享"两个阶段：
+    </p>
+
+    <div class="plan-grid">
+      <!-- 近期 -->
+      <div class="plan-card">
+        <div class="plan-phase">Phase 01 · 近期设想</div>
+        <div class="plan-title">个人工作流提效</div>
+        <ul class="plan-items">
+          <li>配置"景观搜索小助手"：尝试写出一个能自动扒场地调研数据、查规范的专属 Skill，缩短前期找资料的时间</li>
+          <li>塞进日常工作流：前期辅助找灵感意向，中期帮着理顺文本逻辑，后期尝试辅助优化排版</li>
+        </ul>
+      </div>
+      <!-- 长远 -->
+      <div class="plan-card">
+        <div class="plan-phase">Phase 02 · 长远设想</div>
+        <div class="plan-title">搭建迷你"AI 景观虚拟部门"</div>
+        <ul class="plan-items">
+          <li>封装团队通用"景观基础 Skill"：给 AI 写好针对行业的行为准则，同事直接调用无需懂底层代码</li>
+          <li>拆分各司其职的"虚拟员工"：前期调研专员、项目文案策划、施工落地审核员</li>
+          <li>多 Agent 协同"开会"纠错：调研专员拉完数据出方案，直接交给审核员挑刺，交叉验证过滤不靠谱想法</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="insight-box" style="margin-top:24px;">
+      <p>目前我还在初期的学习和摸索阶段，后续如果有更成熟的稳定版本，我再向您和团队做详细演示。</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="page-footer">
+    <span>AI 工具学习汇报 · 景观设计部</span>
+    <span>2026</span>
+  </footer>
+
+</div>
+
+<!-- Intersection Observer 动画入场 -->
+<script>
+(function() {
+  var sections = document.querySelectorAll('.section');
+  if (!sections.length) return;
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        io.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  sections.forEach(function(s) { io.observe(s); });
+})();
+</script>
+
+</body>
+</html>
